@@ -44,14 +44,17 @@ export const AutomatedEmailCenter: React.FC = () => {
   const fetchEmails = async () => {
     setLoadingEmails(true);
     try {
-      const res = await fetch('/api/emails');
-      const data = await res.json();
-      setEmails(data || []);
-      if (data && data.length > 0 && !selectedEmail) {
-        setSelectedEmail(data[0]);
+      const res = await fetch('/api/emails').catch(() => null);
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        if (Array.isArray(data) && data.length > 0) {
+          setEmails(data);
+          if (!selectedEmail) setSelectedEmail(data[0]);
+          return;
+        }
       }
     } catch (err) {
-      console.error('Error fetching emails:', err);
+      // Backend not available (static host fallback)
     } finally {
       setLoadingEmails(false);
     }
@@ -60,14 +63,17 @@ export const AutomatedEmailCenter: React.FC = () => {
   const fetchSmsLogs = async () => {
     setLoadingSms(true);
     try {
-      const res = await fetch('/api/sms');
-      const data = await res.json();
-      setSmsLogs(data || []);
-      if (data && data.length > 0 && !selectedSms) {
-        setSelectedSms(data[0]);
+      const res = await fetch('/api/sms').catch(() => null);
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        if (Array.isArray(data) && data.length > 0) {
+          setSmsLogs(data);
+          if (!selectedSms) setSelectedSms(data[0]);
+          return;
+        }
       }
     } catch (err) {
-      console.error('Error fetching SMS logs:', err);
+      // Backend not available (static host fallback)
     } finally {
       setLoadingSms(false);
     }
@@ -75,13 +81,13 @@ export const AutomatedEmailCenter: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/notifications/settings');
-      if (res.ok) {
-        const data = await res.json();
-        setSettings(data);
+      const res = await fetch('/api/notifications/settings').catch(() => null);
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data) setSettings(data);
       }
     } catch (err) {
-      console.error('Error fetching notification settings:', err);
+      // Backend not available (static host fallback)
     }
   };
 

@@ -42,9 +42,9 @@ export const StaffScheduling: React.FC<StaffSchedulingProps> = ({
   // Fetch overrides on mount
   useEffect(() => {
     fetch('/api/schedule/overrides')
-      .then(res => res.json())
-      .then(data => setOverrides(data || []))
-      .catch(err => console.error(err));
+      .then(res => (res && res.ok ? res.json() : []))
+      .then(data => setOverrides(Array.isArray(data) ? data : []))
+      .catch(() => setOverrides([]));
   }, []);
 
   useEffect(() => {

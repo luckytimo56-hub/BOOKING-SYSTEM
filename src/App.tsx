@@ -12,12 +12,12 @@ import { LoyaltyCardsManager } from './components/LoyaltyCardsManager';
 import { FrontDeskPanel } from './components/FrontDeskPanel';
 import { AdminPanel } from './components/AdminPanel';
 import { Therapist, Appointment, Branch, MassageService } from './types';
-import { NUAT_THAI_BRANCHES, MASSAGE_SERVICES } from './data/initialData';
+import { NUAT_THAI_BRANCHES, MASSAGE_SERVICES, THERAPISTS } from './data/initialData';
 import { Search, X, CheckCircle2, AlertCircle, Smartphone } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('frontdesk');
-  const [therapists, setTherapists] = useState<Therapist[]>([]);
+  const [therapists, setTherapists] = useState<Therapist[]>(THERAPISTS);
   const [branches, setBranches] = useState<Branch[]>(NUAT_THAI_BRANCHES);
   const [services, setServices] = useState<MassageService[]>(MASSAGE_SERVICES);
   const [syncPulse, setSyncPulse] = useState<boolean>(false);
@@ -39,33 +39,37 @@ export default function App() {
   const fetchAllData = async () => {
     try {
       const [resTherapists, resStats, resBranches, resServices] = await Promise.all([
-        fetch('/api/therapists'),
-        fetch('/api/frontdesk/stats'),
-        fetch('/api/branches'),
-        fetch('/api/services')
+        fetch('/api/therapists').catch(() => null),
+        fetch('/api/frontdesk/stats').catch(() => null),
+        fetch('/api/branches').catch(() => null),
+        fetch('/api/services').catch(() => null)
       ]);
-      if (resTherapists.ok) {
-        const data = await resTherapists.json();
-        setTherapists(data || []);
+      if (resTherapists && resTherapists.ok) {
+        const data = await resTherapists.json().catch(() => null);
+        if (Array.isArray(data) && data.length > 0) {
+          setTherapists(data);
+        }
       }
-      if (resStats.ok) {
-        const stats = await resStats.json();
-        setPendingIncomingCount(stats.pendingIncoming || 0);
+      if (resStats && resStats.ok) {
+        const stats = await resStats.json().catch(() => null);
+        if (stats && typeof stats.pendingIncoming === 'number') {
+          setPendingIncomingCount(stats.pendingIncoming);
+        }
       }
-      if (resBranches.ok) {
-        const branchData = await resBranches.json();
+      if (resBranches && resBranches.ok) {
+        const branchData = await resBranches.json().catch(() => null);
         if (Array.isArray(branchData) && branchData.length > 0) {
           setBranches(branchData);
         }
       }
-      if (resServices.ok) {
-        const serviceData = await resServices.json();
+      if (resServices && resServices.ok) {
+        const serviceData = await resServices.json().catch(() => null);
         if (Array.isArray(serviceData) && serviceData.length > 0) {
           setServices(serviceData);
         }
       }
     } catch (err) {
-      console.error('Error loading data:', err);
+      console.warn('Backend API note (expected if deployed as static GitHub Pages):', err);
     }
   };
 

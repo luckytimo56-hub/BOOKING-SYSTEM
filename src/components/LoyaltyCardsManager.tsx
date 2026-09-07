@@ -30,7 +30,7 @@ import {
   LoyaltyTier, 
   LoyaltyAuditAction 
 } from '../types';
-import { NUAT_THAI_BRANCHES } from '../data/initialData';
+import { NUAT_THAI_BRANCHES, INITIAL_LOYALTY_CARDS } from '../data/initialData';
 
 interface LoyaltyCardsManagerProps {
   selectedBranch?: string;
@@ -39,8 +39,17 @@ interface LoyaltyCardsManagerProps {
 export const LoyaltyCardsManager: React.FC<LoyaltyCardsManagerProps> = ({
   selectedBranch = 'bgc'
 }) => {
-  const [cards, setCards] = useState<LoyaltyCard[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [cards, setCards] = useState<LoyaltyCard[]>(() => {
+    try {
+      const cached = localStorage.getItem('serenity_loyalty_cards');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return INITIAL_LOYALTY_CARDS;
+  });
+  const [loading, setLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -133,20 +142,26 @@ export const LoyaltyCardsManager: React.FC<LoyaltyCardsManagerProps> = ({
   // Fetch cards
   const fetchCards = async () => {
     try {
-      setLoading(true);
-      const res = await fetch('/api/loyalty-cards');
-      if (res.ok) {
-        const data = await res.json();
-        setCards(data);
-        if (selectedCard) {
-          const refreshed = data.find((c: LoyaltyCard) => c.id === selectedCard.id);
-          if (refreshed) setSelectedCard(refreshed);
-        } else if (data.length > 0) {
-          setSelectedCard(data[0]);
+      const res = await fetch('/api/loyalty-cards').catch(() => null);
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        if (Array.isArray(data) && data.length > 0) {
+          setCards(data);
+          try { localStorage.setItem('serenity_loyalty_cards', JSON.stringify(data)); } catch (e) {}
+          if (selectedCard) {
+            const refreshed = data.find((c: LoyaltyCard) => c.id === selectedCard.id);
+            if (refreshed) setSelectedCard(refreshed);
+          } else if (data.length > 0) {
+            setSelectedCard(data[0]);
+          }
+          return;
         }
       }
+      if (!selectedCard && INITIAL_LOYALTY_CARDS.length > 0) {
+        setSelectedCard(INITIAL_LOYALTY_CARDS[0]);
+      }
     } catch (err) {
-      console.error('Failed to fetch loyalty cards:', err);
+      // Backend not available (static host fallback)
     } finally {
       setLoading(false);
     }
@@ -155,13 +170,19 @@ export const LoyaltyCardsManager: React.FC<LoyaltyCardsManagerProps> = ({
   // Fetch master audit trails
   const fetchMasterAuditTrails = async () => {
     try {
-      const res = await fetch('/api/loyalty-audit-trails');
-      if (res.ok) {
-        const data = await res.json();
-        setMasterAuditTrails(data);
+      const res = await fetch('/api/loyalty-audit-trails').catch(() => null);
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        if (Array.isArray(data) && data.length > 0) {
+          setMasterAuditTrails(data);
+          return;
+        }
       }
+      // Fallback: extract audit trails from initial loyalty cards
+      const trails = INITIAL_LOYALTY_CARDS.flatMap(c => c.auditTrail || []);
+      setMasterAuditTrails(trails);
     } catch (err) {
-      console.error('Failed to fetch audit trails:', err);
+      // Backend not available (static host fallback)
     }
   };
 

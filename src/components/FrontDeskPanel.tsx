@@ -6,7 +6,7 @@ import {
   CreditCard, ChevronRight, HelpCircle, FileText, Send, Award
 } from 'lucide-react';
 import { Appointment, Therapist, AppointmentStatus, Branch, MassageService } from '../types';
-import { MASSAGE_SERVICES, NUAT_THAI_BRANCHES } from '../data/initialData';
+import { MASSAGE_SERVICES, NUAT_THAI_BRANCHES, INITIAL_APPOINTMENTS } from '../data/initialData';
 
 interface FrontDeskPanelProps {
   therapists: Therapist[];
@@ -28,8 +28,17 @@ export const FrontDeskPanel: React.FC<FrontDeskPanelProps> = ({
   const currentBranches = branches && branches.length > 0 ? branches : NUAT_THAI_BRANCHES;
   const currentServices = services && services.length > 0 ? services : MASSAGE_SERVICES;
   // Appointments state
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [appointments, setAppointments] = useState<Appointment[]>(() => {
+    try {
+      const cached = localStorage.getItem('serenity_appointments');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return INITIAL_APPOINTMENTS;
+  });
+  const [loading, setLoading] = useState<boolean>(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [soundAlerts, setSoundAlerts] = useState<boolean>(true);
 
@@ -114,21 +123,24 @@ export const FrontDeskPanel: React.FC<FrontDeskPanelProps> = ({
   // Fetch appointments from API
   const fetchAppointments = async () => {
     try {
-      const res = await fetch('/api/bookings');
-      if (res.ok) {
-        const data: Appointment[] = await res.json();
-        setAppointments(data);
-        setLastRefreshed(new Date());
+      const res = await fetch('/api/bookings').catch(() => null);
+      if (res && res.ok) {
+        const data: Appointment[] = await res.json().catch(() => null);
+        if (Array.isArray(data) && data.length > 0) {
+          setAppointments(data);
+          try { localStorage.setItem('serenity_appointments', JSON.stringify(data)); } catch (e) {}
+          setLastRefreshed(new Date());
 
-        // Check if new pending bookings arrived
-        const pendingNow = data.filter(a => a.status === 'pending').length;
-        if (pendingNow > prevPendingCountRef.current && prevPendingCountRef.current !== 0) {
-          playChime();
+          // Check if new pending bookings arrived
+          const pendingNow = data.filter(a => a.status === 'pending').length;
+          if (pendingNow > prevPendingCountRef.current && prevPendingCountRef.current !== 0) {
+            playChime();
+          }
+          prevPendingCountRef.current = pendingNow;
         }
-        prevPendingCountRef.current = pendingNow;
       }
     } catch (err) {
-      console.error('Error fetching appointments:', err);
+      // Backend offline / static fallback
     } finally {
       setLoading(false);
     }
