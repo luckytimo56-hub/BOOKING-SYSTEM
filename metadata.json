@@ -1,0 +1,6 @@
+{
+  "name": "Serenity Massage & Wellness",
+  "description": "Nuat Thai authentic foot and body massage management system with front desk attendant panel, real-time incoming reservation dispatch, administrative management to add, edit, and remove spa branches and massage treatment services, digital customer loyalty cards, therapist shift rosters, and automated notifications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
